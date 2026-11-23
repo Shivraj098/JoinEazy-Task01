@@ -1,78 +1,53 @@
-import { useCallback, useEffect, useState } from "react";
-import { api, ApiError } from "./lib/api";
+import { Link, Route, Routes } from "react-router";
+import { AppShell } from "./components/AppShell";
+import { GuestOnly, HomeRedirect, RequireRole } from "./features/auth/guards";
+import LoginPage from "./features/auth/LoginPage";
+import RegisterPage from "./features/auth/RegisterPage";
+import DashboardPage from "./features/dashboard/DashboardPage";
 
-type Status = { state: "checking" } | { state: "ready" } | { state: "error"; message: string };
-
-function useServiceStatus() {
-  const [status, setStatus] = useState<Status>({ state: "checking" });
-
-  const check = useCallback(async () => {
-    setStatus({ state: "checking" });
-    try {
-      await api.get<{ status: string }>("/health/ready");
-      setStatus({ state: "ready" });
-    } catch (error) {
-      const message =
-        error instanceof ApiError ? error.message : "Could not reach the server. Try again.";
-      setStatus({ state: "error", message });
-    }
-  }, []);
-
-  useEffect(() => {
-    void check();
-  }, [check]);
-
-  return { status, check };
+function NotFoundPage() {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center px-4 text-center">
+      <h1 className="text-xl font-semibold">Page not found</h1>
+      <p className="mt-2 text-slate-600">The page you are looking for does not exist.</p>
+      <Link to="/" className="mt-4 font-medium text-indigo-700 hover:underline">
+        Go to the home page
+      </Link>
+    </main>
+  );
 }
 
 export default function App() {
-  const { status, check } = useServiceStatus();
-
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <div className="mb-8 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-lg font-semibold text-white">
-          J
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Joineazy</h1>
-          <p className="text-sm text-slate-600">Groups, assignments and submissions</p>
-        </div>
-      </div>
+    <Routes>
+      <Route path="/" element={<HomeRedirect />} />
 
-      <section
-        aria-live="polite"
-        className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      <Route element={<GuestOnly />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      <Route
+        element={
+          <RequireRole role="STUDENT">
+            <AppShell />
+          </RequireRole>
+        }
       >
-        <h2 className="text-sm font-medium text-slate-500">Service status</h2>
+        <Route path="/student" element={<DashboardPage />} />
+      </Route>
 
-        {status.state === "checking" && (
-          <p className="mt-2 text-slate-700">Checking connection to the server…</p>
-        )}
+      <Route
+        element={
+          <RequireRole role="ADMIN">
+            <AppShell />
+          </RequireRole>
+        }
+      >
+        <Route path="/admin" element={<DashboardPage />} />
+      </Route>
 
-        {status.state === "ready" && (
-          <p className="mt-2 flex items-center gap-2 font-medium text-emerald-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
-            Server and database are reachable
-          </p>
-        )}
-
-        {status.state === "error" && (
-          <div className="mt-2">
-            <p className="flex items-center gap-2 font-medium text-red-700">
-              <span className="h-2 w-2 rounded-full bg-red-600" aria-hidden="true" />
-              {status.message}
-            </p>
-            <button
-              type="button"
-              onClick={() => void check()}
-              className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-      </section>
-    </main>
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
   );
 }

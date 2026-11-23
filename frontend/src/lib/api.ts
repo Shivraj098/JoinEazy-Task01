@@ -39,6 +39,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError(0, "NETWORK_ERROR", "Could not reach the server. Check your connection.");
   }
 
+  if (response.status === 204) return undefined as T;
+
   const payload: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -60,3 +62,16 @@ export const api = {
   post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
 };
+
+/** Extracts the first message per field from a validation error's details. */
+export function getFieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || !isRecord(error.details)) return {};
+  const { fieldErrors } = error.details;
+  if (!isRecord(fieldErrors)) return {};
+
+  const result: Record<string, string> = {};
+  for (const [field, messages] of Object.entries(fieldErrors)) {
+    if (Array.isArray(messages) && typeof messages[0] === "string") result[field] = messages[0];
+  }
+  return result;
+}

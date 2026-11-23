@@ -26,12 +26,14 @@ Assignment files are never uploaded to this application. Work is submitted exter
 │   ├── src/
 │   │   ├── config/       # validated environment configuration
 │   │   ├── lib/          # shared clients (Prisma)
-│   │   ├── middleware/   # error handling, not-found
+│   │   ├── middleware/   # authentication, role checks, origin check, errors
 │   │   ├── modules/      # feature modules (routes, services)
 │   │   └── utils/
 │   └── tests/
 ├── frontend/
 │   └── src/
+│       ├── components/   # shared UI (shell, buttons, form fields)
+│       ├── features/     # auth, dashboard
 │       └── lib/          # typed API client
 ├── docker-compose.yml
 ├── Dockerfile.backend
@@ -129,14 +131,27 @@ Run from the repository root.
 
 Variables prefixed with `VITE_` would be public in the browser bundle, so no secrets are ever placed behind that prefix.
 
+## Authentication
+
+Sessions use a signed JWT stored in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production), so the token is never readable from JavaScript. Every protected request re-reads the user from the database, which means a changed role or removed account takes effect immediately. State-changing requests are also checked against the request origin as a second CSRF defence.
+
+- Public registration always creates a **Student**; a `role` field in the request is rejected.
+- The **Admin** (professor) account is created by `npm run db:seed` from the `ADMIN_*` variables and cannot be registered through the API.
+- Passwords are hashed with bcrypt. Login returns the same error for an unknown email and a wrong password.
+- Student IDs are the official institution-issued ID, stored trimmed and uppercased. The application checks that the ID is present, at most 64 characters and unique; it does not verify it against institution records.
+
 ## API
 
 All endpoints live under `/api` and respond with JSON. Successful responses use `{ "data": ... }`; failures use `{ "error": { "code", "message", "details" } }`.
 
-| Method | Path                | Access | Description                                     |
-| ------ | ------------------- | ------ | ----------------------------------------------- |
-| GET    | `/api/health`       | Public | Liveness check                                  |
-| GET    | `/api/health/ready` | Public | Readiness check; verifies the database responds |
+| Method | Path                 | Access    | Description                                     |
+| ------ | -------------------- | --------- | ----------------------------------------------- |
+| GET    | `/api/health`        | Public    | Liveness check                                  |
+| GET    | `/api/health/ready`  | Public    | Readiness check; verifies the database responds |
+| POST   | `/api/auth/register` | Public    | Register a student and start a session          |
+| POST   | `/api/auth/login`    | Public    | Sign in and start a session                     |
+| POST   | `/api/auth/logout`   | Public    | Clear the session cookie                        |
+| GET    | `/api/auth/me`       | Signed in | Current user                                    |
 
 ## Database
 
@@ -159,7 +174,8 @@ The app is deployed as a single Vercel project: the React build is served as sta
    Remove-Item Env:DIRECT_URL
    ```
 
-3. **Vercel:** import the repository, leave the framework preset on **Other** (build settings come from `vercel.json`), and add `DATABASE_URL` (the pooled string) under Production environment variables.
-4. **Verify:** open `/api/health` and `/api/health/ready` on the deployed URL.
+3. **Seed the admin:** with `DIRECT_URL`, `ADMIN_NAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` set in the same way, run `npm run db:seed`.
+4. **Vercel:** import the repository, leave the framework preset on **Other** (build settings come from `vercel.json`), and add `DATABASE_URL` (the pooled string) and `JWT_SECRET` under Production environment variables.
+5. **Verify:** open `/api/health` and `/api/health/ready` on the deployed URL.
 
 Neon's free compute suspends when idle, so the first request after a quiet period can take a few seconds longer.
