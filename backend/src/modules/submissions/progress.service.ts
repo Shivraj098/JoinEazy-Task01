@@ -1,9 +1,42 @@
 import type { Prisma } from "../../generated/prisma/client.js";
 
-export type GroupAssignmentStatus = "PENDING" | "IN_PROGRESS" | "OVERDUE" | "COMPLETED" | "COMPLETED_LATE";
+export type GroupAssignmentStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "OVERDUE"
+  | "COMPLETED"
+  | "COMPLETED_LATE";
 
-type ProgressReader = Pick<Prisma.TransactionClient, "groupMembership" | "submissionConfirmation">;
-type AssignmentDeadline = { id: string; dueAt: Date };
+type ProgressReader = Pick<
+  Prisma.TransactionClient,
+  "groupMembership" | "submissionConfirmation"
+>;
+
+export interface AssignmentDeadline {
+  id: string;
+  dueAt: Date;
+}
+
+export interface GroupAssignmentPair {
+  groupId: string;
+  assignmentId: string;
+}
+
+interface ProgressMembership {
+  studentId: string;
+  student: {
+    id: string;
+    name: string;
+    email: string;
+    studentId: string | null;
+  };
+}
+
+interface ProgressConfirmation {
+  assignmentId: string;
+  studentId: string;
+  confirmedAt: Date;
+}
 
 export interface GroupAssignmentProgress {
   groupId: string;
@@ -40,9 +73,50 @@ export function deriveGroupAssignmentStatus(
   return confirmedCount > 0 ? "IN_PROGRESS" : "PENDING";
 }
 
+function buildGroupAssignmentProgress(
+  groupId: string,
+  assignment: AssignmentDeadline,
+  memberships: ProgressMembership[],
+  confirmations: ProgressConfirmation[],
+  now: Date,
+): GroupAssignmentProgress {
+  const confirmedByStudent = new Map(
+    confirmations.map((confirmation) => [confirmation.studentId, confirmation.confirmedAt]),
+  );
+  const members = memberships.map(({ studentId, student }) => {
+    const confirmedAt = confirmedByStudent.get(studentId) ?? null;
+    return {
+      id: student.id,
+      name: student.name,
+      email: student.email,
+      studentId: student.studentId,
+      confirmedAt,
+      isConfirmed: confirmedAt !== null,
+    };
+  });
+  const confirmedCount = members.filter((member) => member.isConfirmed).length;
+  const memberCount = members.length;
+  const latestConfirmedAt = members.reduce<Date | null>((latest, member) => {
+    if (!member.confirmedAt) return latest;
+    return latest === null || member.confirmedAt > latest ? member.confirmedAt : latest;
+  }, null);
+
+  return {
+    groupId,
+    assignmentId: assignment.id,
+    dueAt: assignment.dueAt,
+    memberCount,
+    confirmedCount,
+    progressPercentage: memberCount === 0 ? 0 : Math.round((confirmedCount / memberCount) * 100),
+    status: deriveGroupAssignmentStatus(confirmedCount, memberCount, assignment.dueAt, latestConfirmedAt, now),
+    latestConfirmedAt,
+    members,
+  };
+}
+
 /**
  * Computes progress from current group membership, never from a stored percentage.
- * This is intentionally reusable by student views and the later admin monitoring module.
+ * The same derivation is used by student views, admin monitoring and analytics.
  */
 export async function getGroupAssignmentProgressForAssignments(
   db: ProgressReader,
@@ -69,40 +143,88 @@ export async function getGroupAssignmentProgressForAssignments(
         select: { assignmentId: true, studentId: true, confirmedAt: true },
       });
 
-  const byAssignment = new Map<string, Map<string, Date>>();
+  const confirmationsByAssignment = new Map<string, ProgressConfirmation[]>();
   for (const confirmation of confirmations) {
-    const perStudent = byAssignment.get(confirmation.assignmentId) ?? new Map<string, Date>();
-    perStudent.set(confirmation.studentId, confirmation.confirmedAt);
-    byAssignment.set(confirmation.assignmentId, perStudent);
+    const current = confirmationsByAssignment.get(confirmation.assignmentId) ?? [];
+    current.push(confirmation);
+    confirmationsByAssignment.set(confirmation.assignmentId, current);
   }
 
-  return assignments.map((assignment) => {
-    const confirmedByStudent = byAssignment.get(assignment.id) ?? new Map<string, Date>();
-    const members = memberships.map(({ studentId, student }) => ({
-      id: student.id,
-      name: student.name,
-      email: student.email,
-      studentId: student.studentId,
-      confirmedAt: confirmedByStudent.get(studentId) ?? null,
-      isConfirmed: confirmedByStudent.has(studentId),
-    }));
-    const confirmedCount = members.filter((member) => member.isConfirmed).length;
-    const memberCount = members.length;
-    const latestConfirmedAt = members.reduce<Date | null>((latest, member) => {
-      if (!member.confirmedAt) return latest;
-      return latest === null || member.confirmedAt > latest ? member.confirmedAt : latest;
-    }, null);
-
-    return {
+  return assignments.map((assignment) =>
+    buildGroupAssignmentProgress(
       groupId,
-      assignmentId: assignment.id,
-      dueAt: assignment.dueAt,
-      memberCount,
-      confirmedCount,
-      progressPercentage: memberCount === 0 ? 0 : Math.round((confirmedCount / memberCount) * 100),
-      status: deriveGroupAssignmentStatus(confirmedCount, memberCount, assignment.dueAt, latestConfirmedAt, now),
-      latestConfirmedAt,
-      members,
-    };
+      assignment,
+      memberships,
+      confirmationsByAssignment.get(assignment.id) ?? [],
+      now,
+    ),
+  );
+}
+
+/**
+ * Batched equivalent for professor monitoring. It loads memberships and confirmations
+ * once for the requested group/assignment pairs, then applies the same status derivation.
+ */
+export async function getGroupAssignmentProgressForPairs(
+  db: ProgressReader,
+  pairs: GroupAssignmentPair[],
+  assignments: AssignmentDeadline[],
+  now: Date = new Date(),
+): Promise<GroupAssignmentProgress[]> {
+  if (pairs.length === 0 || assignments.length === 0) return [];
+
+  const assignmentById = new Map(assignments.map((assignment) => [assignment.id, assignment]));
+  const uniquePairs = Array.from(
+    new Map(pairs.map((pair) => [`${pair.assignmentId}:${pair.groupId}`, pair])).values(),
+  ).filter((pair) => assignmentById.has(pair.assignmentId));
+  if (uniquePairs.length === 0) return [];
+
+  const groupIds = Array.from(new Set(uniquePairs.map((pair) => pair.groupId)));
+  const assignmentIds = Array.from(new Set(uniquePairs.map((pair) => pair.assignmentId)));
+  const memberships = await db.groupMembership.findMany({
+    where: { groupId: { in: groupIds } },
+    orderBy: { joinedAt: "asc" },
+    select: {
+      groupId: true,
+      studentId: true,
+      student: { select: { id: true, name: true, email: true, studentId: true } },
+    },
+  });
+  const studentIds = Array.from(new Set(memberships.map((membership) => membership.studentId)));
+  const confirmations = studentIds.length === 0
+    ? []
+    : await db.submissionConfirmation.findMany({
+        where: {
+          groupId: { in: groupIds },
+          assignmentId: { in: assignmentIds },
+          studentId: { in: studentIds },
+        },
+        select: { groupId: true, assignmentId: true, studentId: true, confirmedAt: true },
+      });
+
+  const membershipsByGroup = new Map<string, ProgressMembership[]>();
+  for (const membership of memberships) {
+    const current = membershipsByGroup.get(membership.groupId) ?? [];
+    current.push({ studentId: membership.studentId, student: membership.student });
+    membershipsByGroup.set(membership.groupId, current);
+  }
+
+  const confirmationsByPair = new Map<string, ProgressConfirmation[]>();
+  for (const confirmation of confirmations) {
+    const key = `${confirmation.assignmentId}:${confirmation.groupId}`;
+    const current = confirmationsByPair.get(key) ?? [];
+    current.push(confirmation);
+    confirmationsByPair.set(key, current);
+  }
+
+  return uniquePairs.map((pair) => {
+    const key = `${pair.assignmentId}:${pair.groupId}`;
+    return buildGroupAssignmentProgress(
+      pair.groupId,
+      assignmentById.get(pair.assignmentId)!,
+      membershipsByGroup.get(pair.groupId) ?? [],
+      confirmationsByPair.get(key) ?? [],
+      now,
+    );
   });
 }
