@@ -163,6 +163,13 @@ All endpoints live under `/api` and respond with JSON. Successful responses use 
 | GET | `/api/admin/assignments/:assignmentId` | Admin | Retrieve an assignment for editing |
 | POST | `/api/admin/assignments` | Admin | Create an assignment for all students or selected groups |
 | PATCH | `/api/admin/assignments/:assignmentId` | Admin | Edit assignment details and targeting (targeting locks after the first confirmation) |
+| POST | `/api/submissions/:assignmentId/confirm` | Eligible student | Record the current student’s individual submission confirmation; retries are idempotent |
+
+## Submission confirmations and progress
+
+A student must belong to an eligible group before confirming an assignment. The confirmation endpoint records the authenticated student's ID, current group ID and server-generated timestamp; the client cannot submit those values. A repeated confirmation for the same assignment returns the existing record rather than creating a duplicate.
+
+Group progress is derived from the group's current membership and its individual confirmations. It is not stored as a percentage. A member added later therefore changes the denominator and can reduce the displayed percentage. The status is `PENDING` (no confirmations), `IN_PROGRESS` (some confirmations before the deadline), `OVERDUE` (the deadline passed while at least one member remains unconfirmed), `COMPLETED` (everyone confirmed by the deadline), or `COMPLETED_LATE` (everyone confirmed after the deadline). Late confirmations are still accepted and recorded.
 
 ## Database
 

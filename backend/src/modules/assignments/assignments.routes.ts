@@ -3,17 +3,18 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { authorizeRole } from "../../middleware/authorize-role.js";
 import { parseInput } from "../../utils/validate.js";
 import { assignmentIdParamsSchema, createAssignmentSchema, updateAssignmentSchema } from "./assignments.schemas.js";
-import { createAssignment, getAdminAssignment, getStudentAssignment, listAdminAssignments, listGroupsForAssignmentTargeting, listStudentAssignments, updateAssignment } from "./assignments.service.js";
+import { createAssignment, getAdminAssignment, listAdminAssignments, listGroupsForAssignmentTargeting, updateAssignment } from "./assignments.service.js";
+import { getStudentAssignmentWithProgress, listStudentAssignmentsWithProgress } from "../submissions/submissions.service.js";
 
 export const assignmentsRouter = Router();
 assignmentsRouter.use(authenticate, authorizeRole("STUDENT"));
 assignmentsRouter.get("/", async (req, res) => {
-  const result = await listStudentAssignments(req.user!.id);
+  const result = await listStudentAssignmentsWithProgress(req.user!.id);
   res.json({ data: result });
 });
 assignmentsRouter.get("/:assignmentId", async (req, res) => {
   const { assignmentId } = parseInput(assignmentIdParamsSchema, req.params);
-  const result = await getStudentAssignment(assignmentId, req.user!.id);
+  const result = await getStudentAssignmentWithProgress(assignmentId, req.user!.id);
   res.json({ data: result });
 });
 
