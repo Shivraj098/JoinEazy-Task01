@@ -101,7 +101,7 @@ The frontend runs at http://localhost:5173 and proxies `/api` to the backend on 
 docker compose up --build
 ```
 
-This starts PostgreSQL, applies the committed migrations, and runs the backend (http://localhost:4000) and frontend (http://localhost:5173).
+Before the first run, create the initial migration with `npm run db:migrate`. Docker Compose then starts PostgreSQL, applies the migration history, seeds the admin account, and runs the backend (http://localhost:4000) and frontend (http://localhost:5173).
 
 ## Scripts
 
@@ -144,18 +144,29 @@ Sessions use a signed JWT stored in an `HttpOnly`, `SameSite=Lax` cookie (`Secur
 
 All endpoints live under `/api` and respond with JSON. Successful responses use `{ "data": ... }`; failures use `{ "error": { "code", "message", "details" } }`.
 
-| Method | Path                 | Access    | Description                                     |
-| ------ | -------------------- | --------- | ----------------------------------------------- |
-| GET    | `/api/health`        | Public    | Liveness check                                  |
-| GET    | `/api/health/ready`  | Public    | Readiness check; verifies the database responds |
-| POST   | `/api/auth/register` | Public    | Register a student and start a session          |
-| POST   | `/api/auth/login`    | Public    | Sign in and start a session                     |
-| POST   | `/api/auth/logout`   | Public    | Clear the session cookie                        |
-| GET    | `/api/auth/me`       | Signed in | Current user                                    |
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| GET | `/api/health` | Public | Liveness check |
+| GET | `/api/health/ready` | Public | Readiness check; verifies the database responds |
+| POST | `/api/auth/register` | Public | Register a student and start a session |
+| POST | `/api/auth/login` | Public | Sign in and start a session |
+| POST | `/api/auth/logout` | Public | Clear the session cookie |
+| GET | `/api/auth/me` | Signed in | Current user |
+| POST | `/api/groups` | Student | Create a group; creator becomes its leader and first member |
+| GET | `/api/groups/me` | Student | Retrieve the current student's group and members |
+| GET | `/api/students/search?q=` | Student group leader | Search students who are not already in a group |
+| POST | `/api/groups/:groupId/members` | Group leader | Add a registered student by email or student ID |
+| GET | `/api/assignments` | Student | List assignments available to the student's group (or all-student assignments before joining a group) |
+| GET | `/api/assignments/:assignmentId` | Eligible student | Retrieve an assignment available to the student's group |
+| GET | `/api/admin/groups` | Admin | List groups for assignment targeting |
+| GET | `/api/admin/assignments` | Admin | List assignments and confirmation counts |
+| GET | `/api/admin/assignments/:assignmentId` | Admin | Retrieve an assignment for editing |
+| POST | `/api/admin/assignments` | Admin | Create an assignment for all students or selected groups |
+| PATCH | `/api/admin/assignments/:assignmentId` | Admin | Edit assignment details and targeting (targeting locks after the first confirmation) |
 
 ## Database
 
-The schema is defined in `backend/prisma/schema.prisma` and covers users, groups, group memberships, assignments, assignment targets and submission confirmations. Migrations are committed under `backend/prisma/migrations`.
+The schema is defined in `backend/prisma/schema.prisma` and covers users, groups, group memberships, assignments, assignment targets and submission confirmations. Prisma Migrate manages the migration history under `backend/prisma/migrations`; create the initial migration with `npm run db:migrate` before using `npm run db:deploy` or the Docker Compose startup flow.
 
 ```powershell
 npm run db:migrate
