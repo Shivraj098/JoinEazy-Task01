@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum AssignmentTarget {
+  ALL_STUDENTS
+  SELECTED_GROUPS
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  name         String   @db.VarChar(100)
+  email        String   @unique @db.VarChar(254)
+  // Official institution-issued ID. Required for students, null for admins.
+  // Stored trimmed and uppercased so uniqueness and search are consistent.
+  studentId    String?  @unique @map("student_id") @db.VarChar(64)
+  passwordHash String   @map("password_hash")
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  ledGroup           Group?
+  membership         GroupMembership?
+  createdAssignments Assignment[]
+  confirmations      SubmissionConfirmation[]
+
+  @@map("users")
+}
+
+model Group {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(60)
+  // Unique: a user can lead at most one group.
+  leaderId  String   @unique @map("leader_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  leader        User                     @relation(fields: [leaderId], references: [id], onDelete: Restrict)
+  members       GroupMembership[]
+  assignments   AssignmentGroup[]
+  confirmations SubmissionConfirmation[]
+
+  @@map("groups")
+}
+
+model GroupMembership {
+  id        String   @id @default(uuid()) @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  // Unique: a student belongs to at most one group.
+  studentId String   @unique @map("student_id") @db.Uuid
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([groupId])
+  @@map("group_memberships")
+}
+
+model Assignment {
+  id          String           @id @default(uuid()) @db.Uuid
+  title       String           @db.VarChar(150)
+  description String
+  dueAt       DateTime         @map("due_at") @db.Timestamptz(3)
+  oneDriveUrl String           @map("one_drive_url")
+  targetType  AssignmentTarget @default(ALL_STUDENTS) @map("target_type")
+  createdById String           @map("created_by_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  createdBy     User                     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  groups        AssignmentGroup[]
+  confirmations SubmissionConfirmation[]
+
+  @@index([dueAt])
+  @@index([createdById])
+  @@map("assignments")
+}
+
+// Only populated for SELECTED_GROUPS assignments. ALL_STUDENTS assignments
+// reach every group through targetType alone.
+model AssignmentGroup {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  groupId      String   @map("group_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, groupId])
+  @@index([groupId])
+  @@map("assignment_groups")
+}
+
+model SubmissionConfirmation {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  groupId      String   @map("group_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  // Always set by the server, never accepted from the client.
+  confirmedAt  DateTime @default(now()) @map("confirmed_at") @db.Timestamptz(3)
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  group      Group      @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  student    User       @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  // One confirmation per student per assignment.
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId, groupId])
+  @@map("submission_confirmations")
+}

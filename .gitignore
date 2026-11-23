@@ -1,12 +1,12 @@
-﻿node_modules/
+node_modules/
 dist/
 build/
+coverage/
+.vercel/
 .env
 .env.*
 !.env.example
 *.log
-.vercel/
-.DS_Store
-coverage/
 *.tsbuildinfo
-generated/
+.DS_Store
+backend/src/generated/

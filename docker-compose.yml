@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-joineazy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-joineazy}
+      POSTGRES_DB: ${POSTGRES_DB:-joineazy}
+    ports:
+      # Published on 5433 so it does not clash with a Postgres already running on 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      NODE_ENV: development
+      PORT: "4000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-joineazy}:${POSTGRES_PASSWORD:-joineazy}@db:5432/${POSTGRES_DB:-joineazy}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Apply committed migrations, then start the API.
+    command: sh -c "npm run db:deploy -w backend && npm run dev -w backend"
+    ports:
+      - "4000:4000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    environment:
+      API_PROXY_TARGET: http://backend:4000
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
