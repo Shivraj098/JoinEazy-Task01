@@ -1,4 +1,7 @@
-import type { GroupAssignmentProgress, GroupAssignmentStatus } from "../submissions/progress.service.js";
+import type {
+  GroupAssignmentProgress,
+  GroupAssignmentStatus,
+} from "../submissions/progress.service.js";
 
 export const GROUP_ASSIGNMENT_STATUSES: GroupAssignmentStatus[] = [
   "PENDING",
@@ -30,8 +33,7 @@ export function summarizeGroupAssignmentProgress(
   for (const item of progress) statusBreakdown[item.status] += 1;
 
   const eligibleGroupAssignmentPairs = progress.length;
-  const completedGroupAssignmentPairs =
-    statusBreakdown.COMPLETED + statusBreakdown.COMPLETED_LATE;
+  const completedGroupAssignmentPairs = statusBreakdown.COMPLETED + statusBreakdown.COMPLETED_LATE;
   const overdueGroupAssignmentPairs = statusBreakdown.OVERDUE;
 
   return {

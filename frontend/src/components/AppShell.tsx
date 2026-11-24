@@ -18,8 +18,15 @@ const activeLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 function Brand({ homePath }: { homePath: string }) {
   return (
-    <Link to={homePath} aria-label="Joineazy home" className="inline-flex items-center gap-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
-      <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 font-semibold text-white">
+    <Link
+      to={homePath}
+      aria-label="Joineazy home"
+      className="inline-flex items-center gap-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+    >
+      <span
+        aria-hidden="true"
+        className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 font-semibold text-white"
+      >
         J
       </span>
       <span className="font-semibold tracking-tight text-slate-900">Joineazy</span>
@@ -42,16 +49,17 @@ export function AppShell() {
 
   const homePath = homePathFor(user.role);
   const roleLabel = user.role === "ADMIN" ? "Professor" : "Student";
-  const navigation: NavigationItem[] = user.role === "ADMIN"
-    ? [
-        { to: homePath, label: "Dashboard", end: true },
-        { to: "/admin/assignments", label: "Assignments" },
-      ]
-    : [
-        { to: homePath, label: "Dashboard", end: true },
-        { to: "/student/group", label: "My group" },
-        { to: "/student/assignments", label: "Assignments" },
-      ];
+  const navigation: NavigationItem[] =
+    user.role === "ADMIN"
+      ? [
+          { to: homePath, label: "Dashboard", end: true },
+          { to: "/admin/assignments", label: "Assignments" },
+        ]
+      : [
+          { to: homePath, label: "Dashboard", end: true },
+          { to: "/student/group", label: "My group" },
+          { to: "/student/assignments", label: "Assignments" },
+        ];
 
   return (
     <>
@@ -62,7 +70,10 @@ export function AppShell() {
         Skip to main content
       </a>
       <div className="min-h-screen bg-slate-50 md:flex">
-        <aside aria-label="Sidebar" className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex">
+        <aside
+          aria-label="Sidebar"
+          className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white p-4 md:flex"
+        >
           <Brand homePath={homePath} />
           <nav aria-label="Primary navigation" className="mt-8 flex flex-col gap-1">
             {navigation.map((item) => (

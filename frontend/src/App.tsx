@@ -31,13 +31,28 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
-      <Route element={<RequireRole role="STUDENT"><AppShell /></RequireRole>}>
+      <Route
+        element={
+          <RequireRole role="STUDENT">
+            <AppShell />
+          </RequireRole>
+        }
+      >
         <Route path="/student" element={<DashboardPage />} />
         <Route path="/student/group" element={<GroupPage />} />
         <Route path="/student/assignments" element={<StudentAssignmentsPage />} />
-        <Route path="/student/assignments/:assignmentId" element={<StudentAssignmentDetailPage />} />
+        <Route
+          path="/student/assignments/:assignmentId"
+          element={<StudentAssignmentDetailPage />}
+        />
       </Route>
-      <Route element={<RequireRole role="ADMIN"><AppShell /></RequireRole>}>
+      <Route
+        element={
+          <RequireRole role="ADMIN">
+            <AppShell />
+          </RequireRole>
+        }
+      >
         <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/admin/assignments" element={<AdminAssignmentsPage />} />
         <Route path="/admin/assignments/new" element={<AdminAssignmentFormPage />} />

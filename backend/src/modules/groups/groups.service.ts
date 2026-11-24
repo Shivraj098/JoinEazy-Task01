@@ -22,24 +22,27 @@ function groupConflict(): AppError {
 
 export async function createStudentGroup(user: AuthUser, input: CreateGroupInput) {
   try {
-    return await prisma.$transaction(async (tx) => {
-      const membership = await tx.groupMembership.findUnique({
-        where: { studentId: user.id },
-        select: { groupId: true },
-      });
-      if (membership) {
-        throw new AppError(409, "ALREADY_IN_GROUP", "You already belong to a group.");
-      }
+    return await prisma.$transaction(
+      async (tx) => {
+        const membership = await tx.groupMembership.findUnique({
+          where: { studentId: user.id },
+          select: { groupId: true },
+        });
+        if (membership) {
+          throw new AppError(409, "ALREADY_IN_GROUP", "You already belong to a group.");
+        }
 
-      return tx.group.create({
-        data: {
-          name: input.name,
-          leader: { connect: { id: user.id } },
-          members: { create: { student: { connect: { id: user.id } } } },
-        },
-        include: groupDetails,
-      });
-    }, { isolationLevel: "Serializable" });
+        return tx.group.create({
+          data: {
+            name: input.name,
+            leader: { connect: { id: user.id } },
+            members: { create: { student: { connect: { id: user.id } } } },
+          },
+          include: groupDetails,
+        });
+      },
+      { isolationLevel: "Serializable" },
+    );
   } catch (error) {
     if (isPrismaCode(error, "P2002") || isPrismaCode(error, "P2034")) throw groupConflict();
     throw error;
@@ -60,7 +63,10 @@ export async function getStudentGroup(userId: string) {
 }
 
 export async function searchAvailableStudents(userId: string, query: string) {
-  const ledGroup = await prisma.group.findFirst({ where: { leaderId: userId }, select: { id: true } });
+  const ledGroup = await prisma.group.findFirst({
+    where: { leaderId: userId },
+    select: { id: true },
+  });
   if (!ledGroup) {
     throw new AppError(403, "GROUP_LEADER_REQUIRED", "Only a group leader can add members.");
   }
@@ -94,41 +100,60 @@ export async function addStudentToGroup(
     : { studentId: normalizeStudentId(identifier) };
 
   try {
-    return await prisma.$transaction(async (tx) => {
-      const group = await tx.group.findUnique({
-        where: { id: groupId },
-        select: { id: true, leaderId: true },
-      });
-      if (!group) throw new AppError(404, "GROUP_NOT_FOUND", "The group could not be found.");
-      if (group.leaderId !== user.id) {
-        throw new AppError(403, "GROUP_LEADER_REQUIRED", "Only the group leader can add members.");
-      }
+    return await prisma.$transaction(
+      async (tx) => {
+        const group = await tx.group.findUnique({
+          where: { id: groupId },
+          select: { id: true, leaderId: true },
+        });
+        if (!group) throw new AppError(404, "GROUP_NOT_FOUND", "The group could not be found.");
+        if (group.leaderId !== user.id) {
+          throw new AppError(
+            403,
+            "GROUP_LEADER_REQUIRED",
+            "Only the group leader can add members.",
+          );
+        }
 
-      const student = await tx.user.findUnique({
-        where: lookup,
-        select: { id: true, role: true },
-      });
-      if (!student || student.role !== "STUDENT") {
-        throw new AppError(404, "STUDENT_NOT_FOUND", "No registered student matches that email or ID.");
-      }
-      if (student.id === user.id) {
-        throw new AppError(409, "ALREADY_IN_GROUP", "You are already a member of this group.");
-      }
+        const student = await tx.user.findUnique({
+          where: lookup,
+          select: { id: true, role: true },
+        });
+        if (!student || student.role !== "STUDENT") {
+          throw new AppError(
+            404,
+            "STUDENT_NOT_FOUND",
+            "No registered student matches that email or ID.",
+          );
+        }
+        if (student.id === user.id) {
+          throw new AppError(409, "ALREADY_IN_GROUP", "You are already a member of this group.");
+        }
 
-      const existingMembership = await tx.groupMembership.findUnique({
-        where: { studentId: student.id },
-        select: { groupId: true },
-      });
-      if (existingMembership) {
-        throw new AppError(409, "STUDENT_ALREADY_IN_GROUP", "This student already belongs to a group.");
-      }
+        const existingMembership = await tx.groupMembership.findUnique({
+          where: { studentId: student.id },
+          select: { groupId: true },
+        });
+        if (existingMembership) {
+          throw new AppError(
+            409,
+            "STUDENT_ALREADY_IN_GROUP",
+            "This student already belongs to a group.",
+          );
+        }
 
-      await tx.groupMembership.create({ data: { groupId, studentId: student.id } });
-      return tx.group.findUniqueOrThrow({ where: { id: groupId }, include: groupDetails });
-    }, { isolationLevel: "Serializable" });
+        await tx.groupMembership.create({ data: { groupId, studentId: student.id } });
+        return tx.group.findUniqueOrThrow({ where: { id: groupId }, include: groupDetails });
+      },
+      { isolationLevel: "Serializable" },
+    );
   } catch (error) {
     if (isPrismaCode(error, "P2002") || isPrismaCode(error, "P2034")) {
-      throw new AppError(409, "STUDENT_ALREADY_IN_GROUP", "This student was added to another group. Refresh and try again.");
+      throw new AppError(
+        409,
+        "STUDENT_ALREADY_IN_GROUP",
+        "This student was added to another group. Refresh and try again.",
+      );
     }
     throw error;
   }

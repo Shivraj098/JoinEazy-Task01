@@ -1,5 +1,8 @@
 import { prisma } from "../../lib/prisma.js";
-import { getGroupAssignmentProgressForPairs, type GroupAssignmentPair } from "../submissions/progress.service.js";
+import {
+  getGroupAssignmentProgressForPairs,
+  type GroupAssignmentPair,
+} from "../submissions/progress.service.js";
 import { summarizeGroupAssignmentProgress } from "./admin-monitoring.metrics.js";
 import type { AdminMonitoringQuery } from "./admin-monitoring.schemas.js";
 
@@ -25,9 +28,12 @@ async function loadMonitoringSnapshot(assignmentId?: string) {
   const groupById = new Map(groups.map((group) => [group.id, group]));
   const pairs: GroupAssignmentPair[] = [];
   for (const assignment of assignments) {
-    const eligibleGroupIds = assignment.targetType === "ALL_STUDENTS"
-      ? groups.map((group) => group.id)
-      : assignment.groups.map((entry) => entry.groupId).filter((groupId) => groupById.has(groupId));
+    const eligibleGroupIds =
+      assignment.targetType === "ALL_STUDENTS"
+        ? groups.map((group) => group.id)
+        : assignment.groups
+            .map((entry) => entry.groupId)
+            .filter((groupId) => groupById.has(groupId));
     for (const groupId of eligibleGroupIds) pairs.push({ assignmentId: assignment.id, groupId });
   }
 
@@ -36,13 +42,14 @@ async function loadMonitoringSnapshot(assignmentId?: string) {
 }
 
 export async function getAdminOverview() {
-  const [studentCount, ungroupedStudentCount, groupCount, assignmentCount, snapshot] = await Promise.all([
-    prisma.user.count({ where: { role: "STUDENT" } }),
-    prisma.user.count({ where: { role: "STUDENT", membership: null } }),
-    prisma.group.count(),
-    prisma.assignment.count(),
-    loadMonitoringSnapshot(),
-  ]);
+  const [studentCount, ungroupedStudentCount, groupCount, assignmentCount, snapshot] =
+    await Promise.all([
+      prisma.user.count({ where: { role: "STUDENT" } }),
+      prisma.user.count({ where: { role: "STUDENT", membership: null } }),
+      prisma.group.count(),
+      prisma.assignment.count(),
+      loadMonitoringSnapshot(),
+    ]);
 
   return {
     summary: {

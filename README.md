@@ -28,19 +28,19 @@ A role-based group assignment management platform for students and professors. S
 
 ## Technology stack
 
-| Layer | Technology |
-| --- | --- |
-| Frontend | React 19, TypeScript 5.9, Vite 7 |
-| Routing | React Router 7 |
-| Styling | Tailwind CSS 4 |
-| Backend | Node.js 22, Express 5, TypeScript 5.9 (ESM / NodeNext) |
-| API validation | Zod 4 |
-| Database access | Prisma 7 with the PostgreSQL `pg` adapter |
-| Database | PostgreSQL (local Docker or Neon) |
-| Authentication | JWT signed with `jose`, HttpOnly cookie, `bcryptjs` password hashing |
-| Testing | Vitest and Supertest |
-| Quality tools | ESLint 9 and Prettier 3 |
-| Hosting target | Single Vercel project with Neon PostgreSQL |
+| Layer           | Technology                                                           |
+| --------------- | -------------------------------------------------------------------- |
+| Frontend        | React 19, TypeScript 5.9, Vite 7                                     |
+| Routing         | React Router 7                                                       |
+| Styling         | Tailwind CSS 4                                                       |
+| Backend         | Node.js 22, Express 5, TypeScript 5.9 (ESM / NodeNext)               |
+| API validation  | Zod 4                                                                |
+| Database access | Prisma 7 with the PostgreSQL `pg` adapter                            |
+| Database        | PostgreSQL (local Docker or Neon)                                    |
+| Authentication  | JWT signed with `jose`, HttpOnly cookie, `bcryptjs` password hashing |
+| Testing         | Vitest and Supertest                                                 |
+| Quality tools   | ESLint 9 and Prettier 3                                              |
+| Hosting target  | Single Vercel project with Neon PostgreSQL                           |
 
 Exact dependency versions are pinned in the workspace `package.json` files and `package-lock.json`.
 
@@ -163,23 +163,23 @@ Vite serves the frontend (normally at `http://localhost:5173`) and proxies `/api
 
 ## Environment variables
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NODE_ENV` | No | `development`, `test` or `production`; defaults to `development`. |
-| `PORT` | No | Local Express port; defaults to `4000`. |
-| `DATABASE_URL` | Yes | PostgreSQL connection used by the application at runtime. |
-| `DIRECT_URL` | No | Direct PostgreSQL connection for migration/seed operations; use with Neon. |
-| `JWT_SECRET` | Yes | At least 32 characters; never use the example placeholder. |
-| `JWT_EXPIRES_IN_HOURS` | No | Session lifetime in hours; defaults to `24`, maximum `168`. |
-| `AUTH_COOKIE_NAME` | No | Session cookie name; defaults to `joineazy_session`. |
-| `APP_ORIGIN` | No | Allowed local frontend origin for state-changing requests; defaults to `http://localhost:5173`. |
-| `BCRYPT_ROUNDS` | No | Password hashing work factor; defaults to `12`. |
-| `ADMIN_NAME` | Seed only | Name for the provisioned admin account. |
-| `ADMIN_EMAIL` | Seed only | Email for the provisioned admin account. |
-| `ADMIN_PASSWORD` | Seed only | Password for the provisioned admin account. |
-| `POSTGRES_USER` | Docker only | Local Compose database user. |
-| `POSTGRES_PASSWORD` | Docker only | Local Compose database password. |
-| `POSTGRES_DB` | Docker only | Local Compose database name. |
+| Variable               | Required    | Purpose                                                                                         |
+| ---------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
+| `NODE_ENV`             | No          | `development`, `test` or `production`; defaults to `development`.                               |
+| `PORT`                 | No          | Local Express port; defaults to `4000`.                                                         |
+| `DATABASE_URL`         | Yes         | PostgreSQL connection used by the application at runtime.                                       |
+| `DIRECT_URL`           | No          | Direct PostgreSQL connection for migration/seed operations; use with Neon.                      |
+| `JWT_SECRET`           | Yes         | At least 32 characters; never use the example placeholder.                                      |
+| `JWT_EXPIRES_IN_HOURS` | No          | Session lifetime in hours; defaults to `24`, maximum `168`.                                     |
+| `AUTH_COOKIE_NAME`     | No          | Session cookie name; defaults to `joineazy_session`.                                            |
+| `APP_ORIGIN`           | No          | Allowed local frontend origin for state-changing requests; defaults to `http://localhost:5173`. |
+| `BCRYPT_ROUNDS`        | No          | Password hashing work factor; defaults to `12`.                                                 |
+| `ADMIN_NAME`           | Seed only   | Name for the provisioned admin account.                                                         |
+| `ADMIN_EMAIL`          | Seed only   | Email for the provisioned admin account.                                                        |
+| `ADMIN_PASSWORD`       | Seed only   | Password for the provisioned admin account.                                                     |
+| `POSTGRES_USER`        | Docker only | Local Compose database user.                                                                    |
+| `POSTGRES_PASSWORD`    | Docker only | Local Compose database password.                                                                |
+| `POSTGRES_DB`          | Docker only | Local Compose database name.                                                                    |
 
 Variables prefixed with `VITE_` are exposed to the browser bundle. Do not put secrets in `VITE_` variables.
 
@@ -187,28 +187,28 @@ Variables prefixed with `VITE_` are exposed to the browser bundle. Do not put se
 
 All API routes are prefixed with `/api`. Successful responses use `{ "data": ... }`; errors use `{ "error": { "code", "message", "details" } }`.
 
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| `GET` | `/health` | Public | Liveness check; does not query the database. |
-| `GET` | `/health/ready` | Public | Readiness check; runs `SELECT 1`. |
-| `POST` | `/auth/register` | Public | Register a student and create a session. |
-| `POST` | `/auth/login` | Public | Verify credentials and create a session. |
-| `POST` | `/auth/logout` | Public | Clear the session cookie. |
-| `GET` | `/auth/me` | Signed in | Return the current user. |
-| `POST` | `/groups` | Student | Create a group; creator becomes leader and first member. |
-| `GET` | `/groups/me` | Student | Return the current student's group. |
-| `POST` | `/groups/:groupId/members` | Group leader | Add a registered student by email or student ID. |
-| `GET` | `/students/search?q=` | Student group leader | Search for students who are not already in a group. |
-| `GET` | `/assignments` | Student | List assignments available to the student's group (or all-student assignments before joining a group). |
-| `GET` | `/assignments/:assignmentId` | Eligible student | Return an assignment available to the student's group. |
-| `POST` | `/submissions/:assignmentId/confirm` | Eligible student | Record the authenticated student's confirmation; retries are idempotent. |
-| `GET` | `/admin/groups` | Admin | List groups for assignment targeting. |
-| `GET` | `/admin/assignments` | Admin | List assignments. |
-| `GET` | `/admin/assignments/:assignmentId` | Admin | Retrieve an assignment for editing. |
-| `POST` | `/admin/assignments` | Admin | Create an assignment. |
-| `PATCH` | `/admin/assignments/:assignmentId` | Admin | Edit assignment details and targeting. |
-| `GET` | `/admin/overview` | Admin | Return summary counts and all eligible group-assignment status metrics. |
-| `GET` | `/admin/monitoring` | Admin | Return per-assignment/per-group progress, including member confirmation timestamps. |
+| Method  | Endpoint                             | Access               | Purpose                                                                                                |
+| ------- | ------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `GET`   | `/health`                            | Public               | Liveness check; does not query the database.                                                           |
+| `GET`   | `/health/ready`                      | Public               | Readiness check; runs `SELECT 1`.                                                                      |
+| `POST`  | `/auth/register`                     | Public               | Register a student and create a session.                                                               |
+| `POST`  | `/auth/login`                        | Public               | Verify credentials and create a session.                                                               |
+| `POST`  | `/auth/logout`                       | Public               | Clear the session cookie.                                                                              |
+| `GET`   | `/auth/me`                           | Signed in            | Return the current user.                                                                               |
+| `POST`  | `/groups`                            | Student              | Create a group; creator becomes leader and first member.                                               |
+| `GET`   | `/groups/me`                         | Student              | Return the current student's group.                                                                    |
+| `POST`  | `/groups/:groupId/members`           | Group leader         | Add a registered student by email or student ID.                                                       |
+| `GET`   | `/students/search?q=`                | Student group leader | Search for students who are not already in a group.                                                    |
+| `GET`   | `/assignments`                       | Student              | List assignments available to the student's group (or all-student assignments before joining a group). |
+| `GET`   | `/assignments/:assignmentId`         | Eligible student     | Return an assignment available to the student's group.                                                 |
+| `POST`  | `/submissions/:assignmentId/confirm` | Eligible student     | Record the authenticated student's confirmation; retries are idempotent.                               |
+| `GET`   | `/admin/groups`                      | Admin                | List groups for assignment targeting.                                                                  |
+| `GET`   | `/admin/assignments`                 | Admin                | List assignments.                                                                                      |
+| `GET`   | `/admin/assignments/:assignmentId`   | Admin                | Retrieve an assignment for editing.                                                                    |
+| `POST`  | `/admin/assignments`                 | Admin                | Create an assignment.                                                                                  |
+| `PATCH` | `/admin/assignments/:assignmentId`   | Admin                | Edit assignment details and targeting.                                                                 |
+| `GET`   | `/admin/overview`                    | Admin                | Return summary counts and all eligible group-assignment status metrics.                                |
+| `GET`   | `/admin/monitoring`                  | Admin                | Return per-assignment/per-group progress, including member confirmation timestamps.                    |
 
 `GET /admin/monitoring` accepts optional `assignmentId` (UUID) and `status` (`PENDING`, `IN_PROGRESS`, `OVERDUE`, `COMPLETED` or `COMPLETED_LATE`) query parameters.
 
@@ -218,12 +218,12 @@ Each student confirms individually after their group has uploaded its work throu
 
 Group progress is derived from the current group membership and individual confirmations; percentages are not stored. Adding a member after earlier confirmations increases the denominator and can reduce the percentage.
 
-| Status | Meaning |
-| --- | --- |
-| `PENDING` | No current group member has confirmed and the deadline has not passed. |
-| `IN_PROGRESS` | Some, but not all, current group members have confirmed before the deadline. |
-| `OVERDUE` | The deadline has passed and at least one current member remains unconfirmed. |
-| `COMPLETED` | Every current group member confirmed on or before the deadline. |
+| Status           | Meaning                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `PENDING`        | No current group member has confirmed and the deadline has not passed.                    |
+| `IN_PROGRESS`    | Some, but not all, current group members have confirmed before the deadline.              |
+| `OVERDUE`        | The deadline has passed and at least one current member remains unconfirmed.              |
+| `COMPLETED`      | Every current group member confirmed on or before the deadline.                           |
 | `COMPLETED_LATE` | Every current group member confirmed, but the latest confirmation was after the deadline. |
 
 The professor's overall completion percentage is **completed group-assignment pairs (on-time and late) divided by all eligible group-assignment pairs**, rounded to the nearest whole percentage. An eligible pair is a group and assignment combination permitted by the assignment's distribution rule. With no eligible pairs, the displayed percentage is zero.

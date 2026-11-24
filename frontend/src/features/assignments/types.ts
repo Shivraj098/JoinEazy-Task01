@@ -1,5 +1,6 @@
 export type AssignmentTarget = "ALL_STUDENTS" | "SELECTED_GROUPS";
-export type GroupAssignmentStatus = "PENDING" | "IN_PROGRESS" | "OVERDUE" | "COMPLETED" | "COMPLETED_LATE";
+export type GroupAssignmentStatus =
+  "PENDING" | "IN_PROGRESS" | "OVERDUE" | "COMPLETED" | "COMPLETED_LATE";
 
 export interface GroupAssignmentProgress {
   groupId: string;
@@ -33,7 +34,10 @@ export interface StudentAssignment {
   currentUserConfirmed: boolean;
 }
 
-export interface AdminAssignment extends Omit<StudentAssignment, "createdBy" | "groupProgress" | "currentUserConfirmed"> {
+export interface AdminAssignment extends Omit<
+  StudentAssignment,
+  "createdBy" | "groupProgress" | "currentUserConfirmed"
+> {
   createdBy: { id: string; name: string; email: string };
   groups: Array<{ groupId: string; group: { id: string; name: string } }>;
   _count: { confirmations: number };

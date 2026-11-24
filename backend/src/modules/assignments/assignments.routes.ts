@@ -2,19 +2,35 @@ import { Router } from "express";
 import { authenticate } from "../../middleware/authenticate.js";
 import { authorizeRole } from "../../middleware/authorize-role.js";
 import { parseInput } from "../../utils/validate.js";
-import { assignmentIdParamsSchema, createAssignmentSchema, updateAssignmentSchema } from "./assignments.schemas.js";
-import { createAssignment, getAdminAssignment, listAdminAssignments, listGroupsForAssignmentTargeting, updateAssignment } from "./assignments.service.js";
-import { getStudentAssignmentWithProgress, listStudentAssignmentsWithProgress } from "../submissions/submissions.service.js";
+import { requireAuthenticatedUser } from "../../utils/require-authenticated-user.js";
+import {
+  assignmentIdParamsSchema,
+  createAssignmentSchema,
+  updateAssignmentSchema,
+} from "./assignments.schemas.js";
+import {
+  createAssignment,
+  getAdminAssignment,
+  listAdminAssignments,
+  listGroupsForAssignmentTargeting,
+  updateAssignment,
+} from "./assignments.service.js";
+import {
+  getStudentAssignmentWithProgress,
+  listStudentAssignmentsWithProgress,
+} from "../submissions/submissions.service.js";
 
 export const assignmentsRouter = Router();
 assignmentsRouter.use(authenticate, authorizeRole("STUDENT"));
 assignmentsRouter.get("/", async (req, res) => {
-  const result = await listStudentAssignmentsWithProgress(req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const result = await listStudentAssignmentsWithProgress(user.id);
   res.json({ data: result });
 });
 assignmentsRouter.get("/:assignmentId", async (req, res) => {
+  const user = requireAuthenticatedUser(req);
   const { assignmentId } = parseInput(assignmentIdParamsSchema, req.params);
-  const result = await getStudentAssignmentWithProgress(assignmentId, req.user!.id);
+  const result = await getStudentAssignmentWithProgress(assignmentId, user.id);
   res.json({ data: result });
 });
 
@@ -34,11 +50,15 @@ adminRouter.get("/assignments/:assignmentId", async (req, res) => {
   res.json({ data: { assignment } });
 });
 adminRouter.post("/assignments", async (req, res) => {
-  const assignment = await createAssignment(parseInput(createAssignmentSchema, req.body), req.user!.id);
+  const user = requireAuthenticatedUser(req);
+  const assignment = await createAssignment(parseInput(createAssignmentSchema, req.body), user.id);
   res.status(201).json({ data: { assignment } });
 });
 adminRouter.patch("/assignments/:assignmentId", async (req, res) => {
   const { assignmentId } = parseInput(assignmentIdParamsSchema, req.params);
-  const assignment = await updateAssignment(assignmentId, parseInput(updateAssignmentSchema, req.body));
+  const assignment = await updateAssignment(
+    assignmentId,
+    parseInput(updateAssignmentSchema, req.body),
+  );
   res.json({ data: { assignment } });
 });

@@ -1,16 +1,9 @@
 import type { Prisma } from "../../generated/prisma/client.js";
 
 export type GroupAssignmentStatus =
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "OVERDUE"
-  | "COMPLETED"
-  | "COMPLETED_LATE";
+  "PENDING" | "IN_PROGRESS" | "OVERDUE" | "COMPLETED" | "COMPLETED_LATE";
 
-type ProgressReader = Pick<
-  Prisma.TransactionClient,
-  "groupMembership" | "submissionConfirmation"
->;
+type ProgressReader = Pick<Prisma.TransactionClient, "groupMembership" | "submissionConfirmation">;
 
 export interface AssignmentDeadline {
   id: string;
@@ -108,7 +101,13 @@ function buildGroupAssignmentProgress(
     memberCount,
     confirmedCount,
     progressPercentage: memberCount === 0 ? 0 : Math.round((confirmedCount / memberCount) * 100),
-    status: deriveGroupAssignmentStatus(confirmedCount, memberCount, assignment.dueAt, latestConfirmedAt, now),
+    status: deriveGroupAssignmentStatus(
+      confirmedCount,
+      memberCount,
+      assignment.dueAt,
+      latestConfirmedAt,
+      now,
+    ),
     latestConfirmedAt,
     members,
   };
@@ -136,12 +135,13 @@ export async function getGroupAssignmentProgressForAssignments(
   });
   const studentIds = memberships.map((membership) => membership.studentId);
   const assignmentIds = assignments.map((assignment) => assignment.id);
-  const confirmations = studentIds.length === 0
-    ? []
-    : await db.submissionConfirmation.findMany({
-        where: { groupId, assignmentId: { in: assignmentIds }, studentId: { in: studentIds } },
-        select: { assignmentId: true, studentId: true, confirmedAt: true },
-      });
+  const confirmations =
+    studentIds.length === 0
+      ? []
+      : await db.submissionConfirmation.findMany({
+          where: { groupId, assignmentId: { in: assignmentIds }, studentId: { in: studentIds } },
+          select: { assignmentId: true, studentId: true, confirmedAt: true },
+        });
 
   const confirmationsByAssignment = new Map<string, ProgressConfirmation[]>();
   for (const confirmation of confirmations) {
@@ -191,16 +191,17 @@ export async function getGroupAssignmentProgressForPairs(
     },
   });
   const studentIds = Array.from(new Set(memberships.map((membership) => membership.studentId)));
-  const confirmations = studentIds.length === 0
-    ? []
-    : await db.submissionConfirmation.findMany({
-        where: {
-          groupId: { in: groupIds },
-          assignmentId: { in: assignmentIds },
-          studentId: { in: studentIds },
-        },
-        select: { groupId: true, assignmentId: true, studentId: true, confirmedAt: true },
-      });
+  const confirmations =
+    studentIds.length === 0
+      ? []
+      : await db.submissionConfirmation.findMany({
+          where: {
+            groupId: { in: groupIds },
+            assignmentId: { in: assignmentIds },
+            studentId: { in: studentIds },
+          },
+          select: { groupId: true, assignmentId: true, studentId: true, confirmedAt: true },
+        });
 
   const membershipsByGroup = new Map<string, ProgressMembership[]>();
   for (const membership of memberships) {
@@ -218,10 +219,15 @@ export async function getGroupAssignmentProgressForPairs(
   }
 
   return uniquePairs.map((pair) => {
+    const assignment = assignmentById.get(pair.assignmentId);
+    if (!assignment) {
+      throw new Error(`Missing assignment "${pair.assignmentId}" while computing group progress.`);
+    }
+
     const key = `${pair.assignmentId}:${pair.groupId}`;
     return buildGroupAssignmentProgress(
       pair.groupId,
-      assignmentById.get(pair.assignmentId)!,
+      assignment,
       membershipsByGroup.get(pair.groupId) ?? [],
       confirmationsByPair.get(key) ?? [],
       now,

@@ -13,19 +13,19 @@ The application uses a modular monolith: one React client and one Express API ba
 
 ## 2. Technology choices
 
-| Concern | Choice | Reason |
-| --- | --- | --- |
-| Client | React 19 + TypeScript 5.9 | Typed component-based UI. |
-| Build and development | Vite 7 | Fast local development and static production output. |
-| Client routing | React Router 7 | Role-guarded student and admin route trees. |
-| Styling | Tailwind CSS 4 | Consistent utility-based responsive styling. |
-| API | Express 5 + TypeScript 5.9 | Small, explicit HTTP service with modular route boundaries. |
-| Input validation | Zod 4 | Runtime validation at API boundaries and typed parsed input. |
-| ORM | Prisma 7 | Relational schema, typed queries and migration workflow. |
-| PostgreSQL driver | `pg` with `@prisma/adapter-pg` | Explicit PostgreSQL adapter. |
-| Authentication | `jose` JWT + HttpOnly cookie | Browser session token is not exposed to JavaScript. |
-| Password hashing | `bcryptjs` | Pure-JavaScript bcrypt implementation avoids native build requirements. |
-| Hosting | Vercel + Neon (free tiers, subject to terms) | One-origin static frontend/API deployment and managed PostgreSQL. |
+| Concern               | Choice                                       | Reason                                                                  |
+| --------------------- | -------------------------------------------- | ----------------------------------------------------------------------- |
+| Client                | React 19 + TypeScript 5.9                    | Typed component-based UI.                                               |
+| Build and development | Vite 7                                       | Fast local development and static production output.                    |
+| Client routing        | React Router 7                               | Role-guarded student and admin route trees.                             |
+| Styling               | Tailwind CSS 4                               | Consistent utility-based responsive styling.                            |
+| API                   | Express 5 + TypeScript 5.9                   | Small, explicit HTTP service with modular route boundaries.             |
+| Input validation      | Zod 4                                        | Runtime validation at API boundaries and typed parsed input.            |
+| ORM                   | Prisma 7                                     | Relational schema, typed queries and migration workflow.                |
+| PostgreSQL driver     | `pg` with `@prisma/adapter-pg`               | Explicit PostgreSQL adapter.                                            |
+| Authentication        | `jose` JWT + HttpOnly cookie                 | Browser session token is not exposed to JavaScript.                     |
+| Password hashing      | `bcryptjs`                                   | Pure-JavaScript bcrypt implementation avoids native build requirements. |
+| Hosting               | Vercel + Neon (free tiers, subject to terms) | One-origin static frontend/API deployment and managed PostgreSQL.       |
 
 Exact dependency versions are pinned in the package manifests and root lockfile.
 
@@ -72,14 +72,14 @@ flowchart TD
 
 The backend follows feature-oriented modules. Each feature owns its routes, validation schemas and service-level business rules.
 
-| Module | Responsibility |
-| --- | --- |
-| `auth` | Student registration, credential verification, session creation and logout. |
-| `groups` | Group creation, current group retrieval, available student search and leader-only member addition. |
-| `assignments` | Admin assignment CRUD (without deletion), distribution rules and student eligibility queries. |
-| `submissions` | Individual confirmations and shared group progress derivation. |
+| Module             | Responsibility                                                                                     |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `auth`             | Student registration, credential verification, session creation and logout.                        |
+| `groups`           | Group creation, current group retrieval, available student search and leader-only member addition. |
+| `assignments`      | Admin assignment CRUD (without deletion), distribution rules and student eligibility queries.      |
+| `submissions`      | Individual confirmations and shared group progress derivation.                                     |
 | `admin-monitoring` | Professor overview metrics, eligible group-assignment pairs, filters and student-level monitoring. |
-| `health` | Liveness and database readiness endpoints. |
+| `health`           | Liveness and database readiness endpoints.                                                         |
 
 Shared infrastructure is kept outside feature modules:
 

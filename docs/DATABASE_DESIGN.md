@@ -75,63 +75,63 @@ erDiagram
 
 ### `users`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key, generated UUID. |
-| `name` | `varchar(100)` | Display name. |
-| `email` | `varchar(254)` | Unique; normalized to lowercase by the application. |
-| `student_id` | `varchar(64)`, nullable | Unique official student identifier; trimmed and uppercased on registration. Null for admin. |
-| `password_hash` | String | bcrypt password hash; never returned by API serializers. |
-| `role` | Enum `STUDENT`, `ADMIN` | Defaults to `STUDENT`; public registration cannot choose the role. |
-| `created_at`, `updated_at` | `timestamptz(3)` | Record lifecycle timestamps. |
+| Column                     | Type                    | Rules / purpose                                                                             |
+| -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
+| `id`                       | UUID                    | Primary key, generated UUID.                                                                |
+| `name`                     | `varchar(100)`          | Display name.                                                                               |
+| `email`                    | `varchar(254)`          | Unique; normalized to lowercase by the application.                                         |
+| `student_id`               | `varchar(64)`, nullable | Unique official student identifier; trimmed and uppercased on registration. Null for admin. |
+| `password_hash`            | String                  | bcrypt password hash; never returned by API serializers.                                    |
+| `role`                     | Enum `STUDENT`, `ADMIN` | Defaults to `STUDENT`; public registration cannot choose the role.                          |
+| `created_at`, `updated_at` | `timestamptz(3)`        | Record lifecycle timestamps.                                                                |
 
 Relationships: a user can lead at most one group, can have at most one group membership, can create multiple assignments and can create multiple submission confirmations.
 
 ### `groups`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `name` | `varchar(60)` | Group display name. |
-| `leader_id` | UUID | Required FK to `users.id`; unique so a user leads at most one group. |
-| `created_at`, `updated_at` | `timestamptz(3)` | Record lifecycle timestamps. |
+| Column                     | Type             | Rules / purpose                                                      |
+| -------------------------- | ---------------- | -------------------------------------------------------------------- |
+| `id`                       | UUID             | Primary key.                                                         |
+| `name`                     | `varchar(60)`    | Group display name.                                                  |
+| `leader_id`                | UUID             | Required FK to `users.id`; unique so a user leads at most one group. |
+| `created_at`, `updated_at` | `timestamptz(3)` | Record lifecycle timestamps.                                         |
 
 The group creator is assigned as leader and receives a matching membership row in the same database transaction.
 
 ### `group_memberships`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `group_id` | UUID | Required FK to `groups.id`. |
-| `student_id` | UUID | Required FK to `users.id`; unique, enforcing one group per student. |
-| `joined_at` | `timestamptz(3)` | Membership creation time. |
+| Column       | Type             | Rules / purpose                                                     |
+| ------------ | ---------------- | ------------------------------------------------------------------- |
+| `id`         | UUID             | Primary key.                                                        |
+| `group_id`   | UUID             | Required FK to `groups.id`.                                         |
+| `student_id` | UUID             | Required FK to `users.id`; unique, enforcing one group per student. |
+| `joined_at`  | `timestamptz(3)` | Membership creation time.                                           |
 
 An index on `group_id` supports group membership retrieval. This table is the source of truth for current group membership and the group-progress denominator.
 
 ### `assignments`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `title` | `varchar(150)` | Assignment title. |
-| `description` | Text | Assignment instructions. |
-| `due_at` | `timestamptz(3)` | Assignment deadline. |
-| `one_drive_url` | Text | HTTPS link supplied by the professor; files remain external. |
-| `target_type` | Enum `ALL_STUDENTS`, `SELECTED_GROUPS` | Describes the assignment distribution rule. |
-| `created_by_id` | UUID | Required FK to the admin user. |
-| `created_at`, `updated_at` | `timestamptz(3)` | Record lifecycle timestamps. |
+| Column                     | Type                                   | Rules / purpose                                              |
+| -------------------------- | -------------------------------------- | ------------------------------------------------------------ |
+| `id`                       | UUID                                   | Primary key.                                                 |
+| `title`                    | `varchar(150)`                         | Assignment title.                                            |
+| `description`              | Text                                   | Assignment instructions.                                     |
+| `due_at`                   | `timestamptz(3)`                       | Assignment deadline.                                         |
+| `one_drive_url`            | Text                                   | HTTPS link supplied by the professor; files remain external. |
+| `target_type`              | Enum `ALL_STUDENTS`, `SELECTED_GROUPS` | Describes the assignment distribution rule.                  |
+| `created_by_id`            | UUID                                   | Required FK to the admin user.                               |
+| `created_at`, `updated_at` | `timestamptz(3)`                       | Record lifecycle timestamps.                                 |
 
 Indexes on `due_at` support deadline-oriented ordering and on `created_by_id` support creator lookups.
 
 ### `assignment_groups`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `assignment_id` | UUID | Required FK to `assignments.id`. |
-| `group_id` | UUID | Required FK to `groups.id`. |
-| `created_at` | `timestamptz(3)` | Link creation time. |
+| Column          | Type             | Rules / purpose                  |
+| --------------- | ---------------- | -------------------------------- |
+| `id`            | UUID             | Primary key.                     |
+| `assignment_id` | UUID             | Required FK to `assignments.id`. |
+| `group_id`      | UUID             | Required FK to `groups.id`.      |
+| `created_at`    | `timestamptz(3)` | Link creation time.              |
 
 A unique composite constraint on `(assignment_id, group_id)` prevents a selected group from being linked to the same assignment more than once. An index on `group_id` supports group assignment lookups.
 
@@ -139,28 +139,28 @@ A unique composite constraint on `(assignment_id, group_id)` prevents a selected
 
 ### `submission_confirmations`
 
-| Column | Type | Rules / purpose |
-| --- | --- | --- |
-| `id` | UUID | Primary key. |
-| `assignment_id` | UUID | Required FK to `assignments.id`. |
-| `group_id` | UUID | Required FK to the group at confirmation time. |
-| `student_id` | UUID | Required FK to the confirming user. |
-| `confirmed_at` | `timestamptz(3)` | Server-generated confirmation timestamp. |
+| Column          | Type             | Rules / purpose                                |
+| --------------- | ---------------- | ---------------------------------------------- |
+| `id`            | UUID             | Primary key.                                   |
+| `assignment_id` | UUID             | Required FK to `assignments.id`.               |
+| `group_id`      | UUID             | Required FK to the group at confirmation time. |
+| `student_id`    | UUID             | Required FK to the confirming user.            |
+| `confirmed_at`  | `timestamptz(3)` | Server-generated confirmation timestamp.       |
 
 A unique composite constraint on `(assignment_id, student_id)` allows one confirmation per student per assignment. An index on `(assignment_id, group_id)` supports monitoring an assignment's group confirmations.
 
 ## 4. Relationships and cardinality
 
-| Relationship | Cardinality | Enforcement |
-| --- | --- | --- |
-| User to led group | One user to zero or one group | Unique `groups.leader_id`. |
-| User to membership | One user to zero or one membership | Unique `group_memberships.student_id`. |
-| Group to memberships | One group to many students | FK `group_memberships.group_id`. |
-| Admin user to assignments | One creator to many assignments | FK `assignments.created_by_id`. |
-| Assignment to selected groups | Many-to-many | `assignment_groups` join table. |
-| Assignment to confirmations | One assignment to many confirmations | FK `submission_confirmations.assignment_id`. |
-| Group to confirmations | One group to many confirmations | FK `submission_confirmations.group_id`. |
-| User to confirmations | One student to many confirmations | FK `submission_confirmations.student_id`. |
+| Relationship                  | Cardinality                          | Enforcement                                  |
+| ----------------------------- | ------------------------------------ | -------------------------------------------- |
+| User to led group             | One user to zero or one group        | Unique `groups.leader_id`.                   |
+| User to membership            | One user to zero or one membership   | Unique `group_memberships.student_id`.       |
+| Group to memberships          | One group to many students           | FK `group_memberships.group_id`.             |
+| Admin user to assignments     | One creator to many assignments      | FK `assignments.created_by_id`.              |
+| Assignment to selected groups | Many-to-many                         | `assignment_groups` join table.              |
+| Assignment to confirmations   | One assignment to many confirmations | FK `submission_confirmations.assignment_id`. |
+| Group to confirmations        | One group to many confirmations      | FK `submission_confirmations.group_id`.      |
+| User to confirmations         | One student to many confirmations    | FK `submission_confirmations.student_id`.    |
 
 ## 5. Integrity rules and indexes
 
